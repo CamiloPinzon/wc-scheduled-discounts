@@ -1,0 +1,56 @@
+=== WooCommerce Scheduled Discounts Manager ===
+Contributors: Tu Nombre
+Tags: woocommerce, discounts, sales, badges, scheduled
+Requires at least: 5.8
+Tested up to: 6.4
+Requires PHP: 7.4
+Stable tag: 1.0.0
+License: GPLv2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+
+Permite programar descuentos del 10% o 15% en productos seleccionados con insignias personalizables.
+
+== Description ==
+
+WooCommerce Scheduled Discounts Manager es un plugin profesional que te permite:
+
+* Seleccionar manualmente productos de WooCommerce
+* Asignarles descuentos del 10% o 15%
+* Mostrar insignias PNG personalizadas en los productos
+* Programar la activación y desactivación automática por fecha y hora
+
+El plugin utiliza el sistema nativo de precios rebajados de WooCommerce, garantizando compatibilidad total con tu tienda.
+
+== Features ==
+
+* Gestión visual de descuentos desde el panel de administración
+* Insignias personalizables en formato PNG
+* Programación por fecha y hora
+* Compatible con temas personalizados (incluyendo WPBakery)
+* Restauración automática de precios al finalizar la campaña
+* Sin modificación de archivos del tema
+
+== Installation ==
+
+1. Sube la carpeta `wc-scheduled-discounts` al directorio `/wp-content/plugins/`
+2. Activa el plugin desde el menú 'Plugins' en WordPress
+3. Ve a WooCommerce > Descuentos Programados para configurar
+
+== Frequently Asked Questions ==
+
+= ¿Puedo usar otros porcentajes de descuento? =
+
+En esta versión solo están disponibles 10% y 15%. Futuras versiones podrían incluir porcentajes personalizados.
+
+= ¿Funciona con productos variables? =
+
+Sí, el plugin es compatible con productos simples y variables.
+
+= ¿Qué pasa si desactivo el plugin? =
+
+Los precios originales se restauran automáticamente.
+
+== Changelog ==
+
+= 1.0.0 =
+* Lanzamiento inicial
