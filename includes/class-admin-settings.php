@@ -415,8 +415,9 @@ class WC_Scheduled_Discounts_Admin_Settings {
                 $product_id = absint($product_id);
                 if ($product_id > 0 && isset($sanitized['products'][$product_id])) {
                     // Only store quantity if product exists in products array
-                    $quantity_value = absint($quantity);
-                    if ($quantity_value > 0) {
+                    // Allow 0 as a valid quantity (out of stock)
+                    if ($quantity !== '' && $quantity !== null) {
+                        $quantity_value = absint($quantity);
                         $sanitized['product_quantities'][$product_id] = $quantity_value;
                     }
                 }

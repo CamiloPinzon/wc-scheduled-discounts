@@ -4,7 +4,7 @@ Tags: woocommerce, discounts, sales, badges, scheduled
 Requires at least: 5.8
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.3.1
+Stable tag: 1.3.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,12 @@ Sí, el plugin es compatible con productos simples y variables.
 Los precios originales se restauran automáticamente.
 
 == Changelog ==
+
+= 1.3.2 =
+* Corrección crítica: Actualización de cantidades de stock ahora funciona correctamente
+* Se actualizan los metadatos de stock directamente para garantizar que se guarden
+* Mejora en la validación y almacenamiento de cantidades en la configuración
+* Corrección para productos variables: las cantidades se aplican correctamente a todas las variaciones
 
 = 1.3.1 =
 * Corrección: Mejora en la gestión de inventario para productos variables

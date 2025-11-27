@@ -4,7 +4,7 @@
  * Plugin Name: WooCommerce Scheduled Discounts Manager
  * Plugin URI: https://github.com/CamiloPinzon/wc-scheduled-discounts.git
  * Description: Permite programar descuentos del 10% o 15% en productos seleccionados con insignias personalizables
- * Version: 1.3.1
+ * Version: 1.3.2
  * Author: Camilo Pinzón
  * Author URI: https://camilopinzon.netlify.app
  * Text Domain: wc-scheduled-discounts
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_SCHED_DISC_VERSION', '1.3.1');
+define('WC_SCHED_DISC_VERSION', '1.3.2');
 define('WC_SCHED_DISC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WC_SCHED_DISC_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('WC_SCHED_DISC_PLUGIN_BASENAME', plugin_basename(__FILE__));

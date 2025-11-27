@@ -227,7 +227,7 @@ class WC_Scheduled_Discounts_Discount_Manager {
         
         // Update stock quantity if specified in settings
         $settings = WC_Scheduled_Discounts::get_settings();
-        if (isset($settings['product_quantities'][$product_id]) && $settings['product_quantities'][$product_id] > 0) {
+        if (isset($settings['product_quantities'][$product_id]) && $settings['product_quantities'][$product_id] !== '') {
             $new_quantity = absint($settings['product_quantities'][$product_id]);
             
             // Enable stock management
@@ -240,6 +240,11 @@ class WC_Scheduled_Discounts_Discount_Manager {
             } else {
                 $product->set_stock_status('outofstock');
             }
+            
+            // Also update meta directly to ensure it's saved
+            update_post_meta($product_id, '_manage_stock', 'yes');
+            update_post_meta($product_id, '_stock', $new_quantity);
+            wc_update_product_stock_status($product_id, $new_quantity > 0 ? 'instock' : 'outofstock');
         }
         
         $product->save();
@@ -306,7 +311,7 @@ class WC_Scheduled_Discounts_Discount_Manager {
         // Update stock quantity if specified in settings (for parent product)
         $settings = WC_Scheduled_Discounts::get_settings();
         $parent_id = $variation->get_parent_id();
-        if ($parent_id && isset($settings['product_quantities'][$parent_id]) && $settings['product_quantities'][$parent_id] > 0) {
+        if ($parent_id && isset($settings['product_quantities'][$parent_id]) && $settings['product_quantities'][$parent_id] !== '') {
             $new_quantity = absint($settings['product_quantities'][$parent_id]);
             
             // Enable stock management
@@ -319,6 +324,11 @@ class WC_Scheduled_Discounts_Discount_Manager {
             } else {
                 $variation->set_stock_status('outofstock');
             }
+            
+            // Also update meta directly to ensure it's saved
+            update_post_meta($variation_id, '_manage_stock', 'yes');
+            update_post_meta($variation_id, '_stock', $new_quantity);
+            wc_update_product_stock_status($variation_id, $new_quantity > 0 ? 'instock' : 'outofstock');
         }
         
         $variation->save();
