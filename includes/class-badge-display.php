@@ -102,12 +102,19 @@ class WC_Scheduled_Discounts_Badge_Display {
             'wc-sched-disc-badge--' . $context,
             'wc-sched-disc-badge--' . $discount
         );
+
+        // Force smaller size only on inner product (single) page via inline style
+        $style_attr = '';
+        if ($context === 'single') {
+            $style_attr = ' style="width:16px;height:auto;"';
+        }
         
         printf(
-            '<div class="%s"><img src="%s" alt="%s" class="wc-sched-disc-badge__image"></div>',
+            '<div class="%s"><img src="%s" alt="%s" class="wc-sched-disc-badge__image"%s></div>',
             esc_attr(implode(' ', $classes)),
             esc_url($badge_url),
-            esc_attr(sprintf('%s%% de descuento', $discount))
+            esc_attr(sprintf('%s%% de descuento', $discount)),
+            $style_attr
         );
     }
     

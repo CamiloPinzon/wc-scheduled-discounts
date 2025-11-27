@@ -2,17 +2,17 @@
 
 /* Base Badge Styles */
 .wc-sched-disc-badge {
-    position: absolute;
-    z-index: 10;
-    pointer-events: none;
-    line-height: 0;
+	position: absolute;
+	z-index: 10;
+	pointer-events: none;
+	line-height: 0;
 }
 
 .wc-sched-disc-badge__image {
-    display: block;
-    max-width: 100%;
-    height: auto;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+	display: block;
+	max-width: 100%;
+	height: auto;
+	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
 /* ============================================
@@ -21,19 +21,19 @@
 
 /* Loop/Archive Badge (Product Thumbnails) - Position (Dynamic & Proportional) */
 .wc-sched-disc-badge--loop {
-    /* Dynamic positioning: scales proportionally with container and viewport */
-    /* Top position: scales with container height and viewport */
-    top: clamp(2%, min(3%, 2.5vh), 4%);
-    /* 
+	/* Dynamic positioning: scales proportionally with container and viewport */
+	/* Top position: scales with container height and viewport */
+	top: clamp(2%, min(3%, 2.5vh), 4%);
+	/* 
      * Breakdown:
      * - min(3%, 2.5vh): Uses 3% of container height OR 2.5vh, whichever is smaller
      *   This ensures position scales with product image size but also considers screen size
      * - clamp(2%, ..., 4%): Ensures position never gets too close to edge (min 2%) or too far (max 4%)
      */
-    
-    /* Left position: scales with container width and viewport */
-    left: clamp(30%, min(33%, 30vw), 36%);
-    /* 
+
+	/* Left position: scales with container width and viewport */
+	left: clamp(30%, min(33%, 30vw), 36%);
+	/* 
      * Breakdown:
      * - min(33%, 30vw): Uses 33% of container width OR 30vw, whichever is smaller
      *   This ensures position scales with product image size but also considers screen size
@@ -43,66 +43,46 @@
 
 /* Loop/Archive Badge - Size (Dynamic & Proportional) */
 .wc-sched-disc-badge--loop .wc-sched-disc-badge__image {
-    /* Dynamic sizing: scales proportionally with both container and viewport */
-    /* Primary: percentage of container (scales with product image) */
-    /* Secondary: viewport width for screen size responsiveness */
-    /* clamp(min, preferred, max) ensures smooth scaling */
-    width: clamp(50px, min(22%, 18vw), 100px);
-    /* 
+	/* Dynamic sizing: scales proportionally with both container and viewport */
+	/* Primary: percentage of container (scales with product image) */
+	/* Secondary: viewport width for screen size responsiveness */
+	/* clamp(min, preferred, max) ensures smooth scaling */
+	width: clamp(70px, min(28%, 22vw), 130px);
+	/* 
      * Breakdown:
      * - min(22%, 18vw): Uses 22% of container OR 18vw, whichever is smaller
      *   This ensures badge scales with product image size but also considers screen size
      * - clamp(50px, ..., 100px): Ensures badge never gets smaller than 50px or larger than 100px
      */
-    max-width: 100px;  /* Absolute maximum */
-    min-width: 50px;   /* Absolute minimum */
-    height: auto;      /* Maintain aspect ratio */
-    object-fit: contain; /* Ensure image maintains proportions */
+	max-width: 130px; /* Absolute maximum */
+	min-width: 70px; /* Absolute minimum */
+	height: auto; /* Maintain aspect ratio */
+	object-fit: contain; /* Ensure image maintains proportions */
 }
 
 /* Single Product Page Badge - Position (Dynamic & Proportional) */
 .wc-sched-disc-badge--single {
-    /* Dynamic positioning: scales proportionally with container and viewport */
-    /* Top position: scales with container height and viewport - matches loop badge */
-    top: clamp(2%, min(3%, 2.5vh), 4%);
-    /* 
-     * Breakdown:
-     * - min(3%, 2.5vh): Uses 3% of container height OR 2.5vh, whichever is smaller
-     *   Matches loop badge positioning for consistency
-     * - clamp(2%, ..., 4%): Ensures position never gets too close to edge (min 2%) or too far (max 4%)
-     */
-    
-    /* Left position: scales with container width and viewport - matches loop badge */
-    left: clamp(30%, min(33%, 30vw), 36%);
-    /* 
-     * Breakdown:
-     * - min(33%, 30vw): Uses 33% of container width OR 30vw, whichever is smaller
-     *   Matches loop badge positioning for consistency
-     * - clamp(30%, ..., 36%): Ensures position stays within reasonable bounds
-     */
+	/* Fixed position on single product pages (desktop & base) */
+	top: 10px;
+	left: 10px;
+	right: auto;
 }
 
 /* Single Product Page Badge - Size (Desktop) */
 /* Dynamic sizing: approximately 60% of loop badge size for good visibility */
 .wc-sched-disc-badge--single .wc-sched-disc-badge__image {
-    /* Dynamic sizing: scales proportionally with both container and viewport */
-    width: clamp(40px, min(13%, 11vw), 65px);
-    /* 
-     * Breakdown:
-     * - min(13%, 11vw): Uses 13% of container OR 11vw, whichever is smaller
-     *   Approximately 60% of loop badge size (22% * 0.6 ≈ 13%)
-     * - clamp(40px, ..., 65px): Ensures badge is visible but proportional to product page
-     */
-    max-width: 65px;  /* Absolute maximum for desktop product page */
-    min-width: 40px;  /* Absolute minimum for visibility */
-    height: auto;     /* Maintain aspect ratio */
-    object-fit: contain; /* Ensure image maintains proportions */
+	/* About half of the previous desktop size */
+	width: clamp(10px, min(3.25%, 2.75vw), 16px);
+	max-width: 16px; /* Absolute maximum for desktop product page */
+	min-width: 10px; /* Absolute minimum for visibility */
+	height: auto; /* Maintain aspect ratio */
+	object-fit: contain; /* Ensure image maintains proportions */
 }
 
 /* Ensure parent containers have relative position */
 .woocommerce ul.products li.product,
 .woocommerce-page ul.products li.product {
-    position: relative;
+	position: relative;
 }
 
 /* Ensure product image containers are positioned relative */
@@ -110,13 +90,13 @@
 .woocommerce ul.products li.product a,
 .woocommerce-page ul.products li.product .woocommerce-loop-product__link,
 .woocommerce-page ul.products li.product a {
-    position: relative;
-    display: block;
+	position: relative;
+	display: block;
 }
 
 .woocommerce div.product div.images,
 .woocommerce-page div.product div.images {
-    position: relative;
+	position: relative;
 }
 
 /* Ensure product image wrapper is relative */
@@ -124,14 +104,16 @@
 .woocommerce-page ul.products li.product img,
 .woocommerce div.product div.images img,
 .woocommerce-page div.product div.images img {
-    position: relative;
+	position: relative;
 }
 
 /* WPBakery Compatibility - Adjust if needed for WPBakery themes */
 .wpb_wl_summary .wc-sched-disc-badge--single,
 .vc_row .wc-sched-disc-badge--single {
-    top: clamp(2%, min(3%, 2.5vh), 4%);     /* Match single product badge position */
-    left: clamp(30%, min(33%, 30vw), 36%); /* Match single product badge position */
+	/* Ensure same fixed position for WPBakery layouts */
+	top: 10px;
+	left: 10px;
+	right: auto;
 }
 
 /* Hide default WooCommerce sale badge when custom badge is shown */
@@ -144,127 +126,115 @@
 
 /* Animation for badge */
 .wc-sched-disc-badge {
-    animation: wcSchedDiscFadeIn 0.3s ease-out;
+	animation: wcSchedDiscFadeIn 0.3s ease-out;
 }
 
 @keyframes wcSchedDiscFadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+	from {
+		opacity: 0;
+		transform: scale(0.8);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 
 /* Responsive adjustments - Tablet (max-width: 768px) */
 @media screen and (max-width: 768px) {
-    .wc-sched-disc-badge--loop {
-        /* Dynamic positioning for tablets - scales with container and viewport */
-        top: clamp(2.5%, min(3.5%, 3vh), 4.5%);
-        left: clamp(30%, min(33%, 32vw), 36%);
-    }
-    
-    .wc-sched-disc-badge--loop .wc-sched-disc-badge__image {
-        /* Dynamic sizing for tablets - scales proportionally with container and viewport */
-        width: clamp(60px, min(26%, 20vw), 90px);
-        max-width: 90px;  /* Absolute maximum for tablets */
-        min-width: 60px;  /* Absolute minimum for tablets */
-    }
-    
-    .wc-sched-disc-badge--single {
-        /* Dynamic positioning for tablets - scales with container and viewport */
-        top: clamp(2.5%, min(3.5%, 3vh), 4.5%);
-        left: clamp(30%, min(33%, 32vw), 36%);
-    }
-    
-    .wc-sched-disc-badge--single .wc-sched-disc-badge__image {
-        /* Dynamic sizing for tablets - approximately 60% of loop badge size */
-        width: clamp(45px, min(15.6%, 12vw), 60px);
-        /* 
-         * Breakdown:
-         * - min(15.6%, 12vw): Approximately 60% of loop badge (26% * 0.6 ≈ 15.6%)
-         * - clamp(45px, ..., 60px): Ensures good visibility on tablets
-         */
-        max-width: 60px;  /* Absolute maximum for tablets */
-        min-width: 45px;  /* Absolute minimum for tablets */
-    }
+	.wc-sched-disc-badge--loop {
+		/* Dynamic positioning for tablets - scales with container and viewport */
+		top: clamp(2.5%, min(3.5%, 3vh), 4.5%);
+		left: clamp(30%, min(33%, 32vw), 36%);
+	}
+
+	.wc-sched-disc-badge--loop .wc-sched-disc-badge__image {
+		/* Dynamic sizing for tablets - scales proportionally with container and viewport */
+		width: clamp(60px, min(26%, 20vw), 90px);
+		max-width: 90px; /* Absolute maximum for tablets */
+		min-width: 60px; /* Absolute minimum for tablets */
+	}
+
+	.wc-sched-disc-badge--single {
+		/* Keep same fixed corner position on tablets */
+		top: 10px;
+		left: 10px;
+		right: auto;
+	}
+
+	.wc-sched-disc-badge--single .wc-sched-disc-badge__image {
+		/* About half of the previous tablet size */
+		width: clamp(12px, min(4%, 3.5vw), 18px);
+		max-width: 18px;
+		min-width: 12px;
+	}
 }
 
 /* Responsive adjustments - Small Tablet (max-width: 600px) */
 @media screen and (max-width: 600px) {
-    .wc-sched-disc-badge--loop {
-        /* Dynamic positioning for small tablets - scales with container and viewport */
-        top: clamp(2.5%, min(4%, 3.5vh), 5%);
-        left: clamp(30%, min(33%, 34vw), 36%);
-    }
-    
-    .wc-sched-disc-badge--loop .wc-sched-disc-badge__image {
-        /* Dynamic sizing for small tablets - scales proportionally with container and viewport */
-        width: clamp(65px, min(30%, 22vw), 88px);
-        max-width: 88px;  /* Absolute maximum for small tablets */
-        min-width: 65px;  /* Absolute minimum for small tablets */
-    }
-    
-    .wc-sched-disc-badge--single {
-        /* Dynamic positioning for small tablets - scales with container and viewport */
-        top: clamp(2.5%, min(4%, 3.5vh), 5%);
-        left: clamp(30%, min(33%, 34vw), 36%);
-    }
-    
-    .wc-sched-disc-badge--single .wc-sched-disc-badge__image {
-        /* Dynamic sizing for small tablets - approximately 60% of loop badge size */
-        width: clamp(50px, min(18%, 13.2vw), 58px);
-        /* 
-         * Breakdown:
-         * - min(18%, 13.2vw): Approximately 60% of loop badge (30% * 0.6 = 18%)
-         * - clamp(50px, ..., 58px): Ensures good visibility on small tablets
-         */
-        max-width: 58px;  /* Absolute maximum for small tablets */
-        min-width: 50px;  /* Absolute minimum for small tablets */
-    }
+	.wc-sched-disc-badge--loop {
+		/* Dynamic positioning for small tablets - scales with container and viewport */
+		top: clamp(2.5%, min(4%, 3.5vh), 5%);
+		left: clamp(30%, min(33%, 34vw), 36%);
+	}
+
+	.wc-sched-disc-badge--loop .wc-sched-disc-badge__image {
+		/* Dynamic sizing for small tablets - scales proportionally with container and viewport */
+		width: clamp(65px, min(30%, 22vw), 88px);
+		max-width: 88px; /* Absolute maximum for small tablets */
+		min-width: 65px; /* Absolute minimum for small tablets */
+	}
+
+	.wc-sched-disc-badge--single {
+		/* Keep same fixed corner position on small tablets */
+		top: 10px;
+		left: 10px;
+		right: auto;
+	}
+
+	.wc-sched-disc-badge--single .wc-sched-disc-badge__image {
+		/* About half of the previous small-tablet size */
+		width: clamp(11px, min(3.5%, 3vw), 16px);
+		max-width: 16px;
+		min-width: 11px;
+	}
 }
 
 /* Responsive adjustments - Mobile (max-width: 480px) */
 @media screen and (max-width: 480px) {
-    .wc-sched-disc-badge--loop {
-        /* Dynamic positioning for mobile - scales with container and viewport */
-        top: clamp(2.5%, min(4.5%, 4vh), 5.5%);
-        left: clamp(30%, min(33%, 35vw), 36%);
-    }
-    
-    .wc-sched-disc-badge--loop .wc-sched-disc-badge__image {
-        /* Dynamic sizing for mobile - scales proportionally with container and viewport */
-        width: clamp(70px, min(32%, 25vw), 85px);
-        max-width: 85px;  /* Absolute maximum for mobile */
-        min-width: 70px;  /* Absolute minimum for mobile */
-    }
-    
-    .wc-sched-disc-badge--single {
-        /* Dynamic positioning for mobile - scales with container and viewport */
-        top: clamp(2.5%, min(4.5%, 4vh), 5.5%);
-        left: clamp(30%, min(33%, 35vw), 36%);
-    }
-    
-    .wc-sched-disc-badge--single .wc-sched-disc-badge__image {
-        /* Dynamic sizing for mobile - approximately 60% of loop badge size */
-        width: clamp(55px, min(19.2%, 15vw), 60px);
-        /* 
-         * Breakdown:
-         * - min(19.2%, 15vw): Approximately 60% of loop badge (32% * 0.6 ≈ 19.2%)
-         * - clamp(55px, ..., 60px): Ensures good visibility on mobile
-         */
-        max-width: 60px;  /* Absolute maximum for mobile */
-        min-width: 55px;  /* Absolute minimum for mobile */
-    }
+	.wc-sched-disc-badge--loop {
+		/* Dynamic positioning for mobile - scales with container and viewport */
+		top: clamp(2.5%, min(4.5%, 4vh), 5.5%);
+		left: clamp(30%, min(33%, 35vw), 36%);
+	}
+
+	.wc-sched-disc-badge--loop .wc-sched-disc-badge__image {
+		/* Dynamic sizing for mobile - scales proportionally with container and viewport */
+		width: clamp(70px, min(32%, 25vw), 85px);
+		max-width: 85px; /* Absolute maximum for mobile */
+		min-width: 70px; /* Absolute minimum for mobile */
+	}
+
+	.wc-sched-disc-badge--single {
+		/* Keep same fixed corner position on mobile */
+		top: 10px;
+		left: 10px;
+		right: auto;
+	}
+
+	.wc-sched-disc-badge--single .wc-sched-disc-badge__image {
+		/* About half of the previous mobile size */
+		width: clamp(10px, min(3.25%, 2.5vw), 15px);
+		max-width: 15px;
+		min-width: 10px;
+	}
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-    .wc-sched-disc-badge__image {
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
-    }
+	.wc-sched-disc-badge__image {
+		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+	}
 }
 
 /* ============================================
@@ -314,3 +284,12 @@
     right: 15px;
 }
 */
+
+/* Final override: force smaller badge on inner product page in all viewports */
+.wc-sched-disc-badge--single .wc-sched-disc-badge__image {
+	width: 16px !important;
+	max-width: 16px !important;
+	min-width: 16px !important;
+	height: auto !important;
+	object-fit: contain !important;
+}
