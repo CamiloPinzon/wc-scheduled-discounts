@@ -138,6 +138,26 @@ class WC_Scheduled_Discounts_Discount_Manager {
         
         // Handle variable products differently - they may not have a price on the parent
         if ($product->is_type('variable')) {
+            // Backup parent product stock settings if quantity is specified
+            $settings = WC_Scheduled_Discounts::get_settings();
+            if (isset($settings['product_quantities'][$product_id]) && $settings['product_quantities'][$product_id] > 0) {
+                $backup_manage_stock = get_post_meta($product_id, '_wc_sched_disc_original_manage_stock', true);
+                if (empty($backup_manage_stock)) {
+                    $was_managing_stock = $product->managing_stock();
+                    update_post_meta($product_id, '_wc_sched_disc_original_manage_stock', $was_managing_stock ? 'yes' : 'no');
+                    
+                    if ($was_managing_stock) {
+                        $current_stock = $product->get_stock_quantity('edit');
+                        if ($current_stock === null || $current_stock === '') {
+                            $current_stock = $product->get_stock_quantity();
+                        }
+                        update_post_meta($product_id, '_wc_sched_disc_original_stock', $current_stock !== null ? $current_stock : '');
+                    } else {
+                        update_post_meta($product_id, '_wc_sched_disc_original_stock', '');
+                    }
+                }
+            }
+            
             $variations = $product->get_children();
             $variations_processed = false;
             
@@ -209,8 +229,17 @@ class WC_Scheduled_Discounts_Discount_Manager {
         $settings = WC_Scheduled_Discounts::get_settings();
         if (isset($settings['product_quantities'][$product_id]) && $settings['product_quantities'][$product_id] > 0) {
             $new_quantity = absint($settings['product_quantities'][$product_id]);
+            
+            // Enable stock management
             $product->set_manage_stock(true);
             $product->set_stock_quantity($new_quantity);
+            
+            // Set stock status to instock if quantity > 0
+            if ($new_quantity > 0) {
+                $product->set_stock_status('instock');
+            } else {
+                $product->set_stock_status('outofstock');
+            }
         }
         
         $product->save();
@@ -279,8 +308,17 @@ class WC_Scheduled_Discounts_Discount_Manager {
         $parent_id = $variation->get_parent_id();
         if ($parent_id && isset($settings['product_quantities'][$parent_id]) && $settings['product_quantities'][$parent_id] > 0) {
             $new_quantity = absint($settings['product_quantities'][$parent_id]);
+            
+            // Enable stock management
             $variation->set_manage_stock(true);
             $variation->set_stock_quantity($new_quantity);
+            
+            // Set stock status to instock if quantity > 0
+            if ($new_quantity > 0) {
+                $variation->set_stock_status('instock');
+            } else {
+                $variation->set_stock_status('outofstock');
+            }
         }
         
         $variation->save();
@@ -365,6 +403,12 @@ class WC_Scheduled_Discounts_Discount_Manager {
                 $product->set_manage_stock(true);
                 if ($original_stock !== '' && $original_stock !== false && $original_stock !== null) {
                     $product->set_stock_quantity($original_stock);
+                    // Update stock status based on quantity
+                    if ($original_stock > 0) {
+                        $product->set_stock_status('instock');
+                    } else {
+                        $product->set_stock_status('outofstock');
+                    }
                 }
             } else {
                 $product->set_manage_stock(false);
@@ -414,6 +458,12 @@ class WC_Scheduled_Discounts_Discount_Manager {
                 $variation->set_manage_stock(true);
                 if ($original_stock !== '' && $original_stock !== false && $original_stock !== null) {
                     $variation->set_stock_quantity($original_stock);
+                    // Update stock status based on quantity
+                    if ($original_stock > 0) {
+                        $variation->set_stock_status('instock');
+                    } else {
+                        $variation->set_stock_status('outofstock');
+                    }
                 }
             } else {
                 $variation->set_manage_stock(false);
