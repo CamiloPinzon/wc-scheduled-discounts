@@ -113,4 +113,99 @@ class WC_Scheduled_Discounts {
             return '';
         }
     }
+    
+    /**
+     * Check if WooCommerce Subscriptions plugin is active
+     * 
+     * @return bool
+     */
+    public static function is_subscriptions_active() {
+        return class_exists('WC_Subscriptions') || function_exists('wcs_is_subscription');
+    }
+    
+    /**
+     * Check if a product is a subscription product
+     * 
+     * @param int|WC_Product $product Product ID or product object
+     * @return bool
+     */
+    public static function is_subscription_product($product) {
+        if (!self::is_subscriptions_active()) {
+            return false;
+        }
+        
+        if (is_numeric($product)) {
+            $product = wc_get_product($product);
+        }
+        
+        if (!$product) {
+            return false;
+        }
+        
+        // Check if product is subscription type
+        $subscription_types = array('subscription', 'variable-subscription', 'subscription_variation');
+        return in_array($product->get_type(), $subscription_types, true);
+    }
+    
+    /**
+     * Check if a cart item is part of a subscription renewal
+     * 
+     * @param array $cart_item Cart item data
+     * @return bool
+     */
+    public static function is_subscription_renewal($cart_item) {
+        if (!self::is_subscriptions_active()) {
+            return false;
+        }
+        
+        // Check if cart item is a subscription renewal
+        if (isset($cart_item['subscription_renewal']) && !empty($cart_item['subscription_renewal'])) {
+            return true;
+        }
+        
+        // Check if cart item is a resubscribe (should also use regular price)
+        if (isset($cart_item['subscription_resubscribe']) && !empty($cart_item['subscription_resubscribe'])) {
+            return true;
+        }
+        
+        // Check if cart contains a renewal order
+        if (function_exists('wcs_cart_contains_renewal')) {
+            return wcs_cart_contains_renewal();
+        }
+        
+        // Check if cart contains a resubscribe
+        if (function_exists('wcs_cart_contains_resubscribe')) {
+            return wcs_cart_contains_resubscribe();
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if an order is a subscription renewal order
+     * 
+     * @param int|WC_Order $order Order ID or order object
+     * @return bool
+     */
+    public static function is_renewal_order($order) {
+        if (!self::is_subscriptions_active()) {
+            return false;
+        }
+        
+        if (is_numeric($order)) {
+            $order = wc_get_order($order);
+        }
+        
+        if (!$order) {
+            return false;
+        }
+        
+        // Check if order is a renewal
+        if (function_exists('wcs_order_contains_renewal')) {
+            return wcs_order_contains_renewal($order);
+        }
+        
+        // Fallback: check order meta
+        return $order->get_meta('_subscription_renewal', true) || $order->get_meta('_original_order_id', true);
+    }
 }

@@ -24,6 +24,9 @@ class WC_Scheduled_Discounts_Badge_Display {
         add_action('woocommerce_before_single_product_summary', array($this, 'display_badge_single'), 21);
         
         add_filter('woocommerce_sale_flash', array($this, 'modify_sale_flash'), 10, 3);
+        
+        // Display subscription discount message on single product pages
+        add_action('woocommerce_single_product_summary', array($this, 'display_subscription_message'), 25);
     }
     
     private function get_settings() {
@@ -130,5 +133,58 @@ class WC_Scheduled_Discounts_Badge_Display {
         }
         
         return $html;
+    }
+    
+    /**
+     * Display subscription discount message on single product pages
+     * Only shows for subscription products with active discounts
+     */
+    public function display_subscription_message() {
+        global $product;
+        
+        if (!$product || !WC_Scheduled_Discounts::is_campaign_active()) {
+            return;
+        }
+        
+        // Only show for subscription products
+        if (!WC_Scheduled_Discounts::is_subscription_product($product)) {
+            return;
+        }
+        
+        // Check if product has a discount
+        $discount = WC_Scheduled_Discounts::get_product_discount($product->get_id());
+        
+        if ($discount === false) {
+            return;
+        }
+        
+        // Get the message text (bilingual)
+        $message = $this->get_subscription_message();
+        
+        if (empty($message)) {
+            return;
+        }
+        
+        printf(
+            '<div class="wc-sched-disc-subscription-message">%s</div>',
+            wp_kses_post($message)
+        );
+    }
+    
+    /**
+     * Get subscription discount message in appropriate language
+     * 
+     * @return string
+     */
+    private function get_subscription_message() {
+        // Detect language - check WordPress locale
+        $locale = get_locale();
+        $is_spanish = in_array($locale, array('es_ES', 'es_MX', 'es_AR', 'es_CL', 'es_CO', 'es_PE', 'es_VE', 'es_GT', 'es_CR', 'es_DO', 'es_HN', 'es_NI', 'es_PA', 'es_PY', 'es_SV', 'es_UY', 'es_BO', 'es_EC', 'es_CU', 'es_PR'), true);
+        
+        if ($is_spanish) {
+            return '<p class="wc-sched-disc-subscription-message__text"><strong>Importante:</strong> Este descuento solo se aplica en la primera compra. Las renovaciones automáticas se cobrarán al precio regular.</p>';
+        } else {
+            return '<p class="wc-sched-disc-subscription-message__text"><strong>Important:</strong> This discount only applies to the first purchase. Automatic renewals will be charged at the regular price.</p>';
+        }
     }
 }

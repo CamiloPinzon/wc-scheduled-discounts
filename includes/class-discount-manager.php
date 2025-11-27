@@ -22,6 +22,16 @@ class WC_Scheduled_Discounts_Discount_Manager {
         // Ensure discounts are applied when products are loaded (for edge cases)
         add_action('woocommerce_product_query', array($this, 'ensure_campaign_active'), 10);
         
+        // Handle subscription renewals - ensure discounts only apply to initial purchases
+        if (WC_Scheduled_Discounts::is_subscriptions_active()) {
+            // Remove discount from cart items that are subscription renewals
+            add_action('woocommerce_before_calculate_totals', array($this, 'remove_discount_from_renewals'), 10, 1);
+            
+            // Ensure renewal orders use regular price, not sale price
+            add_action('wcs_new_order_created', array($this, 'ensure_renewal_uses_regular_price'), 10, 3);
+            add_action('woocommerce_before_order_object_save', array($this, 'ensure_renewal_order_regular_price'), 10, 1);
+        }
+        
         $this->schedule_cron();
     }
     
@@ -855,17 +865,379 @@ class WC_Scheduled_Discounts_Discount_Manager {
     }
     
     private function clear_all_caches() {
+        // Clear WooCommerce transients
         delete_transient('wc_products_onsale');
         delete_transient('wc_featured_products');
+        delete_transient('wc_product_children_');
         
         wc_delete_shop_order_transients();
         
+        // Increment WooCommerce cache version to invalidate all product caches
         WC_Cache_Helper::get_transient_version('product', true);
         
+        // Clear WordPress object cache
         if (function_exists('wp_cache_flush')) {
             wp_cache_flush();
         }
         
+        // Clear WordPress transients cache
+        global $wpdb;
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_wc_%'");
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_wc_%'");
+        
+        // Clear popular page cache plugins
+        
+        // WP Super Cache
+        if (function_exists('wp_cache_clear_cache')) {
+            wp_cache_clear_cache();
+        }
+        
+        // W3 Total Cache
+        if (function_exists('w3tc_flush_all')) {
+            w3tc_flush_all();
+        } elseif (class_exists('W3_Plugin_TotalCacheAdmin')) {
+            $w3_plugin = w3_instance('W3_Plugin_TotalCacheAdmin');
+            if ($w3_plugin) {
+                $w3_plugin->flush_all();
+            }
+        }
+        
+        // WP Rocket
+        if (function_exists('rocket_clean_domain')) {
+            rocket_clean_domain();
+        }
+        if (function_exists('rocket_clean_minify')) {
+            rocket_clean_minify();
+        }
+        
+        // LiteSpeed Cache
+        if (class_exists('LiteSpeed_Cache_API')) {
+            LiteSpeed_Cache_API::purge_all();
+        }
+        if (function_exists('litespeed_purge_all')) {
+            litespeed_purge_all();
+        }
+        
+        // WP Fastest Cache
+        if (class_exists('WpFastestCache')) {
+            $wpfc = new WpFastestCache();
+            $wpfc->deleteCache();
+        }
+        if (function_exists('wpfc_clear_all_cache')) {
+            wpfc_clear_all_cache(true);
+        }
+        
+        // Autoptimize
+        if (function_exists('autoptimize_cache_flush')) {
+            autoptimize_cache_flush();
+        }
+        if (class_exists('autoptimizeCache')) {
+            autoptimizeCache::clearall();
+        }
+        
+        // Comet Cache
+        if (class_exists('comet_cache')) {
+            comet_cache::clear();
+        }
+        if (function_exists('comet_cache_clear')) {
+            comet_cache_clear();
+        }
+        
+        // Cache Enabler
+        if (function_exists('cache_enabler_clear_cache')) {
+            cache_enabler_clear_cache();
+        }
+        if (class_exists('Cache_Enabler')) {
+            Cache_Enabler::clear_total_cache();
+        }
+        
+        // Hummingbird
+        if (class_exists('WP_Hummingbird_Utils')) {
+            WP_Hummingbird_Utils::get_module('page_cache')->clear_cache();
+        }
+        
+        // WP-Optimize
+        if (class_exists('WP_Optimize')) {
+            WP_Optimize()->get_page_cache()->purge();
+        }
+        
+        // Breeze (Cloudways)
+        if (class_exists('Breeze_Admin')) {
+            do_action('breeze_clear_all_cache');
+        }
+        
+        // Clear product-specific page caches
+        $settings = WC_Scheduled_Discounts::get_settings();
+        if (!empty($settings['products']) && is_array($settings['products'])) {
+            foreach (array_keys($settings['products']) as $product_id) {
+                $product_id = absint($product_id);
+                if ($product_id > 0) {
+                    // Clear product page cache
+                    $product_url = get_permalink($product_id);
+                    if ($product_url) {
+                        // WP Rocket - clear specific URL
+                        if (function_exists('rocket_clean_url')) {
+                            rocket_clean_url($product_url);
+                        }
+                        
+                        // LiteSpeed - clear specific URL
+                        if (class_exists('LiteSpeed_Cache_API')) {
+                            LiteSpeed_Cache_API::purge_url($product_url);
+                        }
+                    }
+                    
+                    // Clear product object cache
+                    wp_cache_delete($product_id, 'posts');
+                    wp_cache_delete($product_id, 'post_meta');
+                    wp_cache_delete('product-' . $product_id, 'products');
+                    wp_cache_delete('wc_product_meta_lookup_' . $product_id, 'product_meta');
+                    
+                    // Clear product transients
+                    wc_delete_product_transients($product_id);
+                    delete_transient('wc_product_' . $product_id);
+                    delete_transient('wc_var_prices_' . $product_id);
+                }
+            }
+        }
+        
+        // Clear shop and archive page caches
+        $shop_page_id = wc_get_page_id('shop');
+        if ($shop_page_id > 0) {
+            $shop_url = get_permalink($shop_page_id);
+            if ($shop_url) {
+                if (function_exists('rocket_clean_url')) {
+                    rocket_clean_url($shop_url);
+                }
+                if (class_exists('LiteSpeed_Cache_API')) {
+                    LiteSpeed_Cache_API::purge_url($shop_url);
+                }
+            }
+        }
+        
+        // Clear category and tag archive caches
+        $product_cats = get_terms(array(
+            'taxonomy' => 'product_cat',
+            'hide_empty' => false,
+            'fields' => 'ids'
+        ));
+        if (!is_wp_error($product_cats) && !empty($product_cats)) {
+            foreach ($product_cats as $cat_id) {
+                $cat_url = get_term_link($cat_id, 'product_cat');
+                if (!is_wp_error($cat_url) && $cat_url) {
+                    if (function_exists('rocket_clean_url')) {
+                        rocket_clean_url($cat_url);
+                    }
+                    if (class_exists('LiteSpeed_Cache_API')) {
+                        LiteSpeed_Cache_API::purge_url($cat_url);
+                    }
+                }
+            }
+        }
+        
+        // Clear CDN caches if applicable
+        // Cloudflare
+        if (function_exists('cloudflare_purge_cache')) {
+            cloudflare_purge_cache();
+        }
+        
+        // KeyCDN
+        if (function_exists('keycdn_purge')) {
+            keycdn_purge();
+        }
+        
+        // MaxCDN / StackPath
+        if (function_exists('maxcdn_purge')) {
+            maxcdn_purge();
+        }
+        
+        // Allow other plugins/themes to clear their caches
         do_action('wc_sched_disc_caches_cleared');
+        
+        // Clear any remaining WooCommerce query caches
+        if (class_exists('WC_Cache_Helper')) {
+            WC_Cache_Helper::get_transient_version('product', true);
+            WC_Cache_Helper::get_transient_version('shipping', true);
+        }
+    }
+    
+    /**
+     * Remove discount from cart items that are subscription renewals
+     * Ensures discounts only apply to initial purchases, not renewals
+     * 
+     * @param WC_Cart $cart Cart object
+     */
+    public function remove_discount_from_renewals($cart) {
+        if (!WC_Scheduled_Discounts::is_subscriptions_active()) {
+            return;
+        }
+        
+        // Prevent infinite loops
+        if (did_action('woocommerce_before_calculate_totals') > 1) {
+            return;
+        }
+        
+        foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
+            // Skip if not a subscription renewal
+            if (!WC_Scheduled_Discounts::is_subscription_renewal($cart_item)) {
+                continue;
+            }
+            
+            $product = $cart_item['data'];
+            if (!$product) {
+                continue;
+            }
+            
+            // Check if this product has a discount applied from our plugin
+            $product_id = $product->get_id();
+            $parent_id = $product->get_parent_id();
+            $settings = WC_Scheduled_Discounts::get_settings();
+            
+            // Check both variation ID and parent ID for variable subscriptions
+            $has_discount = isset($settings['products'][$product_id]) || ($parent_id && isset($settings['products'][$parent_id]));
+            
+            if ($has_discount) {
+                // Determine which ID has the discount for price lookup
+                $discount_product_id = isset($settings['products'][$product_id]) ? $product_id : $parent_id;
+                
+                // Get original regular price from backup
+                $original_regular = get_post_meta($discount_product_id, '_wc_sched_disc_original_regular', true);
+                
+                if ($original_regular !== '' && $original_regular !== false && is_numeric($original_regular)) {
+                    // For subscription renewals, use regular price (no discount)
+                    $product->set_price($original_regular);
+                    $product->set_sale_price('');
+                } else {
+                    // Fallback: use current regular price
+                    $regular_price = $product->get_regular_price();
+                    if ($regular_price) {
+                        $product->set_price($regular_price);
+                        $product->set_sale_price('');
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Ensure renewal orders use regular price, not sale price
+     * This runs when a new subscription renewal order is created
+     * 
+     * @param WC_Order $renewal_order Renewal order
+     * @param WC_Order $subscription Parent subscription order
+     * @param int $order_type Order type (1 = renewal, 2 = resubscribe, 3 = switch)
+     */
+    public function ensure_renewal_uses_regular_price($renewal_order, $subscription, $order_type) {
+        // Only process renewal orders (type 1)
+        if ($order_type !== 1) {
+            return;
+        }
+        
+        if (!WC_Scheduled_Discounts::is_subscriptions_active()) {
+            return;
+        }
+        
+        $settings = WC_Scheduled_Discounts::get_settings();
+        
+        foreach ($renewal_order->get_items() as $item_id => $item) {
+            $product_id = $item->get_product_id();
+            $variation_id = $item->get_variation_id();
+            
+            // Use variation ID if available, otherwise product ID
+            $actual_product_id = $variation_id > 0 ? $variation_id : $product_id;
+            
+            // Check if this product has a discount from our plugin
+            if (!isset($settings['products'][$actual_product_id]) && !isset($settings['products'][$product_id])) {
+                continue;
+            }
+            
+            // Get the product
+            $product = wc_get_product($actual_product_id);
+            if (!$product) {
+                continue;
+            }
+            
+            // Get original regular price
+            $original_regular = get_post_meta($actual_product_id, '_wc_sched_disc_original_regular', true);
+            
+            if ($original_regular !== '' && $original_regular !== false && is_numeric($original_regular)) {
+                // Calculate line total with regular price (no discount)
+                $qty = $item->get_quantity();
+                $line_total = floatval($original_regular) * $qty;
+                $line_subtotal = floatval($original_regular) * $qty;
+                
+                // Update order item prices
+                $item->set_subtotal($line_subtotal);
+                $item->set_total($line_total);
+                $item->save();
+            } else {
+                // Fallback: use current regular price
+                $regular_price = $product->get_regular_price();
+                if ($regular_price) {
+                    $qty = $item->get_quantity();
+                    $line_total = floatval($regular_price) * $qty;
+                    $line_subtotal = floatval($regular_price) * $qty;
+                    
+                    $item->set_subtotal($line_subtotal);
+                    $item->set_total($line_total);
+                    $item->save();
+                }
+            }
+        }
+        
+        // Recalculate order totals
+        $renewal_order->calculate_totals();
+    }
+    
+    /**
+     * Ensure renewal orders use regular price when order is saved
+     * Backup hook for order object save
+     * 
+     * @param WC_Order $order Order object
+     */
+    public function ensure_renewal_order_regular_price($order) {
+        if (!WC_Scheduled_Discounts::is_renewal_order($order)) {
+            return;
+        }
+        
+        if (!WC_Scheduled_Discounts::is_subscriptions_active()) {
+            return;
+        }
+        
+        // Prevent infinite loops
+        if (did_action('woocommerce_before_order_object_save') > 1) {
+            return;
+        }
+        
+        $settings = WC_Scheduled_Discounts::get_settings();
+        
+        foreach ($order->get_items() as $item_id => $item) {
+            $product_id = $item->get_product_id();
+            $variation_id = $item->get_variation_id();
+            
+            // Use variation ID if available, otherwise product ID
+            $actual_product_id = $variation_id > 0 ? $variation_id : $product_id;
+            
+            // Check if this product has a discount from our plugin
+            if (!isset($settings['products'][$actual_product_id]) && !isset($settings['products'][$product_id])) {
+                continue;
+            }
+            
+            // Get original regular price
+            $original_regular = get_post_meta($actual_product_id, '_wc_sched_disc_original_regular', true);
+            
+            if ($original_regular !== '' && $original_regular !== false && is_numeric($original_regular)) {
+                // Calculate line total with regular price (no discount)
+                $qty = $item->get_quantity();
+                $line_total = floatval($original_regular) * $qty;
+                $line_subtotal = floatval($original_regular) * $qty;
+                
+                // Only update if current total is different (to avoid unnecessary saves)
+                if ($item->get_total() != $line_total) {
+                    $item->set_subtotal($line_subtotal);
+                    $item->set_total($line_total);
+                    $item->save();
+                }
+            }
+        }
     }
 }

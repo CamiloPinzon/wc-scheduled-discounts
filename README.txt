@@ -4,7 +4,7 @@ Tags: woocommerce, discounts, sales, badges, scheduled
 Requires at least: 5.8
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.3.8
+Stable tag: 1.4.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,31 @@ Sí, el plugin es compatible con productos simples y variables.
 Los precios originales se restauran automáticamente.
 
 == Changelog ==
+
+= 1.4.2 =
+* Mejora crítica: Limpieza exhaustiva de caché cuando se activan/desactivan descuentos
+* Ahora limpia cachés de plugins populares: WP Super Cache, W3 Total Cache, WP Rocket, LiteSpeed Cache, WP Fastest Cache, Autoptimize, Comet Cache, Cache Enabler, Hummingbird, WP-Optimize, Breeze
+* Limpieza de cachés CDN: Cloudflare, KeyCDN, MaxCDN/StackPath
+* Limpieza de cachés específicos de productos, páginas de tienda y archivos de categorías
+* Limpieza completa de transientes de WooCommerce y WordPress
+* Limpieza de caché de objetos de WordPress
+* Garantiza que los cambios de precio sean visibles inmediatamente en toda la tienda
+
+= 1.4.1 =
+* Nueva funcionalidad: Mensaje informativo para productos de suscripción con descuento
+* Se muestra un mensaje en la página del producto explicando que el descuento solo aplica en la primera compra
+* Soporte bilingüe: mensaje en inglés y español según el idioma del sitio
+* El mensaje aparece automáticamente en productos de suscripción con descuento activo
+* Diseño responsive y estilizado para destacar la información importante
+
+= 1.4.0 =
+* Nueva funcionalidad: Soporte para productos de suscripción (WooCommerce Subscriptions)
+* Los descuentos ahora solo se aplican en la primera compra de suscripciones, no en renovaciones automáticas
+* Compatibilidad completa con WooCommerce Subscriptions para ofrecer descuentos de introducción
+* Los precios de renovación automática siempre usan el precio regular (sin descuento)
+* Soporte para suscripciones simples, variables y variaciones de suscripción
+* Los descuentos se eliminan automáticamente de los carritos de renovación
+* Garantiza que los pedidos de renovación siempre usen el precio regular
 
 = 1.3.8 =
 * Corrección crítica: Actualización de stock ahora ocurre ANTES de guardar la configuración
