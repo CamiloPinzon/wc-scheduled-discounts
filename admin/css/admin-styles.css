@@ -251,6 +251,20 @@ input[type="datetime-local"] {
     padding: 6px 10px;
 }
 
+.quantity-input {
+    min-width: 100px;
+    padding: 6px 10px;
+    font-size: 14px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+}
+
+.quantity-input:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
 .remove-product-btn {
     display: inline-flex;
     align-items: center;

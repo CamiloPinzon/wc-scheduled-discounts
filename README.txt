@@ -4,7 +4,7 @@ Tags: woocommerce, discounts, sales, badges, scheduled
 Requires at least: 5.8
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,12 @@ Sí, el plugin es compatible con productos simples y variables.
 Los precios originales se restauran automáticamente.
 
 == Changelog ==
+
+= 1.3.0 =
+* Nueva funcionalidad: Gestión de cantidad de productos
+* Los administradores pueden establecer una cantidad específica para cada producto
+* La cantidad se actualiza automáticamente cuando la campaña de descuento se activa
+* La cantidad original se restaura cuando la campaña finaliza
 
 = 1.0.0 =
 * Lanzamiento inicial

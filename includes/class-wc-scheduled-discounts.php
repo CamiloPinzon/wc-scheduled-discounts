@@ -19,6 +19,7 @@ class WC_Scheduled_Discounts {
     public static function get_settings() {
         $defaults = array(
             'products' => array(),
+            'product_quantities' => array(),
             'start_date' => '',
             'end_date' => '',
             'badge_10' => '',

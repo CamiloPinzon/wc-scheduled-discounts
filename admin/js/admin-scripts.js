@@ -144,6 +144,8 @@
             html += '<option value="10" selected>10% descuento</option>';
             html += '<option value="15">15% descuento</option>';
             html += '</select>';
+            html += '<input type="number" name="wc_sched_disc_settings[product_quantities][' + productId + ']" ';
+            html += 'class="quantity-input" placeholder="Cantidad" min="0" step="1">';
             html += '<button type="button" class="button button-link-delete remove-product-btn">';
             html += '<span class="dashicons dashicons-trash"></span> Eliminar';
             html += '</button>';

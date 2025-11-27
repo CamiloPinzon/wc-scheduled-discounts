@@ -44,6 +44,7 @@ class WC_Scheduled_Discounts_Admin_Settings {
                 'sanitize_callback' => array($this, 'sanitize_settings'),
                 'default' => array(
                     'products' => array(),
+                    'product_quantities' => array(),
                     'start_date' => '',
                     'end_date' => '',
                     'badge_10' => '',
@@ -305,7 +306,8 @@ class WC_Scheduled_Discounts_Admin_Settings {
                                     foreach ($settings['products'] as $product_id => $discount) {
                                         $product = wc_get_product($product_id);
                                         if ($product) {
-                                            $this->render_product_row($product_id, $product->get_name(), $discount);
+                                            $quantity = isset($settings['product_quantities'][$product_id]) ? $settings['product_quantities'][$product_id] : '';
+                                            $this->render_product_row($product_id, $product->get_name(), $discount, $quantity);
                                         }
                                     }
                                 }
@@ -326,9 +328,10 @@ class WC_Scheduled_Discounts_Admin_Settings {
         <?php
     }
     
-    private function render_product_row($product_id, $product_name, $discount = '10') {
+    private function render_product_row($product_id, $product_name, $discount = '10', $quantity = '') {
         $product_id = absint($product_id);
         $discount = in_array($discount, array('10', '15')) ? $discount : '10';
+        $quantity = !empty($quantity) ? absint($quantity) : '';
         ?>
         <div class="product-row" data-product-id="<?php echo esc_attr($product_id); ?>">
             <div class="product-info">
@@ -345,6 +348,17 @@ class WC_Scheduled_Discounts_Admin_Settings {
                     <option value="10" <?php selected($discount, '10'); ?>>10% descuento</option>
                     <option value="15" <?php selected($discount, '15'); ?>>15% descuento</option>
                 </select>
+                <label class="screen-reader-text" for="quantity_<?php echo esc_attr($product_id); ?>">
+                    Cantidad para <?php echo esc_html($product_name); ?>
+                </label>
+                <input type="number" 
+                       name="wc_sched_disc_settings[product_quantities][<?php echo esc_attr($product_id); ?>]" 
+                       id="quantity_<?php echo esc_attr($product_id); ?>"
+                       class="quantity-input" 
+                       value="<?php echo esc_attr($quantity); ?>"
+                       placeholder="Cantidad"
+                       min="0"
+                       step="1">
                 <button type="button" class="button button-link-delete remove-product-btn">
                     <span class="dashicons dashicons-trash"></span>
                     Eliminar
@@ -390,6 +404,20 @@ class WC_Scheduled_Discounts_Admin_Settings {
                     $product = wc_get_product($product_id);
                     if ($product) {
                         $sanitized['products'][$product_id] = in_array($discount, array('10', '15')) ? $discount : '10';
+                    }
+                }
+            }
+        }
+        
+        $sanitized['product_quantities'] = array();
+        if (isset($input['product_quantities']) && is_array($input['product_quantities'])) {
+            foreach ($input['product_quantities'] as $product_id => $quantity) {
+                $product_id = absint($product_id);
+                if ($product_id > 0 && isset($sanitized['products'][$product_id])) {
+                    // Only store quantity if product exists in products array
+                    $quantity_value = absint($quantity);
+                    if ($quantity_value > 0) {
+                        $sanitized['product_quantities'][$product_id] = $quantity_value;
                     }
                 }
             }

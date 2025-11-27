@@ -182,6 +182,20 @@ class WC_Scheduled_Discounts_Discount_Manager {
             }
             update_post_meta($product_id, '_wc_sched_disc_original_regular', $regular_price);
             update_post_meta($product_id, '_wc_sched_disc_original_sale', $current_sale ? $current_sale : '');
+            
+            // Backup stock management setting and quantity
+            $was_managing_stock = $product->managing_stock();
+            update_post_meta($product_id, '_wc_sched_disc_original_manage_stock', $was_managing_stock ? 'yes' : 'no');
+            
+            if ($was_managing_stock) {
+                $current_stock = $product->get_stock_quantity('edit');
+                if ($current_stock === null || $current_stock === '') {
+                    $current_stock = $product->get_stock_quantity();
+                }
+                update_post_meta($product_id, '_wc_sched_disc_original_stock', $current_stock !== null ? $current_stock : '');
+            } else {
+                update_post_meta($product_id, '_wc_sched_disc_original_stock', '');
+            }
         }
         
         $discount_decimal = floatval($discount) / 100;
@@ -190,6 +204,15 @@ class WC_Scheduled_Discounts_Discount_Manager {
         
         $product->set_sale_price($new_sale_price);
         $product->set_price($new_sale_price);
+        
+        // Update stock quantity if specified in settings
+        $settings = WC_Scheduled_Discounts::get_settings();
+        if (isset($settings['product_quantities'][$product_id]) && $settings['product_quantities'][$product_id] > 0) {
+            $new_quantity = absint($settings['product_quantities'][$product_id]);
+            $product->set_manage_stock(true);
+            $product->set_stock_quantity($new_quantity);
+        }
+        
         $product->save();
         
         update_post_meta($product_id, '_wc_sched_disc_applied', $discount);
@@ -228,6 +251,20 @@ class WC_Scheduled_Discounts_Discount_Manager {
             }
             update_post_meta($variation_id, '_wc_sched_disc_original_regular', $regular_price);
             update_post_meta($variation_id, '_wc_sched_disc_original_sale', $current_sale ? $current_sale : '');
+            
+            // Backup stock management setting and quantity
+            $was_managing_stock = $variation->managing_stock();
+            update_post_meta($variation_id, '_wc_sched_disc_original_manage_stock', $was_managing_stock ? 'yes' : 'no');
+            
+            if ($was_managing_stock) {
+                $current_stock = $variation->get_stock_quantity('edit');
+                if ($current_stock === null || $current_stock === '') {
+                    $current_stock = $variation->get_stock_quantity();
+                }
+                update_post_meta($variation_id, '_wc_sched_disc_original_stock', $current_stock !== null ? $current_stock : '');
+            } else {
+                update_post_meta($variation_id, '_wc_sched_disc_original_stock', '');
+            }
         }
         
         $discount_decimal = floatval($discount) / 100;
@@ -236,6 +273,16 @@ class WC_Scheduled_Discounts_Discount_Manager {
         
         $variation->set_sale_price($new_sale_price);
         $variation->set_price($new_sale_price);
+        
+        // Update stock quantity if specified in settings (for parent product)
+        $settings = WC_Scheduled_Discounts::get_settings();
+        $parent_id = $variation->get_parent_id();
+        if ($parent_id && isset($settings['product_quantities'][$parent_id]) && $settings['product_quantities'][$parent_id] > 0) {
+            $new_quantity = absint($settings['product_quantities'][$parent_id]);
+            $variation->set_manage_stock(true);
+            $variation->set_stock_quantity($new_quantity);
+        }
+        
         $variation->save();
         
         update_post_meta($variation_id, '_wc_sched_disc_applied', $discount);
@@ -281,6 +328,8 @@ class WC_Scheduled_Discounts_Discount_Manager {
                 // Clean up parent meta if exists
                 delete_post_meta($product_id, '_wc_sched_disc_original_regular');
                 delete_post_meta($product_id, '_wc_sched_disc_original_sale');
+                delete_post_meta($product_id, '_wc_sched_disc_original_stock');
+                delete_post_meta($product_id, '_wc_sched_disc_original_manage_stock');
                 delete_post_meta($product_id, '_wc_sched_disc_applied');
                 
                 $manager = self::get_instance();
@@ -296,6 +345,8 @@ class WC_Scheduled_Discounts_Discount_Manager {
         // For simple products
         $original_regular = get_post_meta($product_id, '_wc_sched_disc_original_regular', true);
         $original_sale = get_post_meta($product_id, '_wc_sched_disc_original_sale', true);
+        $original_stock = get_post_meta($product_id, '_wc_sched_disc_original_stock', true);
+        $original_manage_stock = get_post_meta($product_id, '_wc_sched_disc_original_manage_stock', true);
         
         if ($original_regular !== '' && $original_regular !== false) {
             
@@ -309,10 +360,22 @@ class WC_Scheduled_Discounts_Discount_Manager {
                 $product->set_price($original_regular);
             }
             
+            // Restore stock management setting and quantity
+            if ($original_manage_stock === 'yes') {
+                $product->set_manage_stock(true);
+                if ($original_stock !== '' && $original_stock !== false && $original_stock !== null) {
+                    $product->set_stock_quantity($original_stock);
+                }
+            } else {
+                $product->set_manage_stock(false);
+            }
+            
             $product->save();
             
             delete_post_meta($product_id, '_wc_sched_disc_original_regular');
             delete_post_meta($product_id, '_wc_sched_disc_original_sale');
+            delete_post_meta($product_id, '_wc_sched_disc_original_stock');
+            delete_post_meta($product_id, '_wc_sched_disc_original_manage_stock');
             delete_post_meta($product_id, '_wc_sched_disc_applied');
             
             $manager = self::get_instance();
@@ -331,6 +394,8 @@ class WC_Scheduled_Discounts_Discount_Manager {
         
         $original_regular = get_post_meta($variation_id, '_wc_sched_disc_original_regular', true);
         $original_sale = get_post_meta($variation_id, '_wc_sched_disc_original_sale', true);
+        $original_stock = get_post_meta($variation_id, '_wc_sched_disc_original_stock', true);
+        $original_manage_stock = get_post_meta($variation_id, '_wc_sched_disc_original_manage_stock', true);
         
         if ($original_regular !== '' && $original_regular !== false) {
             
@@ -344,10 +409,22 @@ class WC_Scheduled_Discounts_Discount_Manager {
                 $variation->set_price($original_regular);
             }
             
+            // Restore stock management setting and quantity
+            if ($original_manage_stock === 'yes') {
+                $variation->set_manage_stock(true);
+                if ($original_stock !== '' && $original_stock !== false && $original_stock !== null) {
+                    $variation->set_stock_quantity($original_stock);
+                }
+            } else {
+                $variation->set_manage_stock(false);
+            }
+            
             $variation->save();
             
             delete_post_meta($variation_id, '_wc_sched_disc_original_regular');
             delete_post_meta($variation_id, '_wc_sched_disc_original_sale');
+            delete_post_meta($variation_id, '_wc_sched_disc_original_stock');
+            delete_post_meta($variation_id, '_wc_sched_disc_original_manage_stock');
             delete_post_meta($variation_id, '_wc_sched_disc_applied');
             
             $manager = self::get_instance();
