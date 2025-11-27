@@ -1,0 +1,35 @@
+Add quantity management feature for scheduled discount campaigns
+
+Version: 1.3.8
+
+FEATURES:
+- Added quantity input field in admin settings for each product
+- Stock quantity can now be set per product in discount campaigns
+- Stock quantity updates automatically when discount campaign activates
+- Original stock quantity is restored when campaign deactivates
+- Works with both simple and variable products
+
+IMPROVEMENTS:
+- For variable products: updates stock on parent product AND all variations
+- Stock management is automatically enabled when quantity is set
+- Stock status (instock/outofstock) is automatically set based on quantity
+- Multiple cache clearing strategies to ensure changes are visible immediately
+- Uses WooCommerce official stock functions when available
+
+TECHNICAL CHANGES:
+- Added product_quantities array to settings structure
+- New update_product_stock_quantity() method for stock management
+- Stock updates happen immediately when settings are saved
+- Stock updates work regardless of campaign active status
+- Backup and restore system for original stock quantities
+- Triple update strategy: direct meta + WooCommerce methods + post-save verification
+
+FILES MODIFIED:
+- wc-scheduled-discounts.php: Version updated, default settings include product_quantities
+- includes/class-wc-scheduled-discounts.php: Added product_quantities to defaults
+- includes/class-admin-settings.php: Added quantity input field, sanitization, stock update hook
+- includes/class-discount-manager.php: Stock quantity apply/restore logic, new update method
+- admin/js/admin-scripts.js: Quantity input in product row HTML
+- admin/css/admin-styles.css: Quantity input styling
+- README.txt: Changelog updated with all version history
+

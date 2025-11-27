@@ -4,7 +4,7 @@ Tags: woocommerce, discounts, sales, badges, scheduled
 Requires at least: 5.8
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.3.4
+Stable tag: 1.3.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,33 @@ Sí, el plugin es compatible con productos simples y variables.
 Los precios originales se restauran automáticamente.
 
 == Changelog ==
+
+= 1.3.8 =
+* Corrección crítica: Actualización de stock ahora ocurre ANTES de guardar la configuración
+* Nueva función update_stock_before_save() que actualiza el stock inmediatamente durante la sanitización
+* La función update_product_stock_quantity() ahora es pública para poder ser llamada desde otros lugares
+* Uso de funciones oficiales de WooCommerce (wc_update_product_stock) cuando están disponibles
+* Triple verificación: actualiza stock antes de guardar, durante sync_campaign, y después de guardar
+
+= 1.3.7 =
+* Corrección crítica: Doble verificación de metadatos de stock después de guardar
+* Los metadatos de stock se actualizan dos veces (antes y después de save()) para garantizar persistencia
+* Mejora en la limpieza de caché para productos variables
+* Actualización más agresiva de cachés para asegurar que los cambios sean visibles inmediatamente
+
+= 1.3.6 =
+* Corrección crítica: Mejora en el manejo de productos variables
+* Ahora actualiza el stock tanto a nivel de producto padre como en todas las variaciones
+* Soporte para productos variables con gestión de stock a nivel padre o variación
+* Forzar actualización inmediata del stock al guardar configuración
+* Limpieza adicional de caché para garantizar que los cambios sean visibles
+
+= 1.3.5 =
+* Corrección crítica: Las cantidades de stock ahora se actualizan inmediatamente al guardar la configuración
+* Nueva función update_product_stock_quantity() que actualiza el stock independientemente del estado de la campaña
+* Las cantidades se actualizan inmediatamente, no solo cuando la campaña está activa
+* Mejora: El stock ya no se restaura cuando la campaña está inactiva (solo se restauran los precios)
+* Corrección: Las cantidades de stock se mantienen incluso si la campaña no está activa
 
 = 1.3.4 =
 * Corrección completa y pruebas: Mejoras finales en la gestión de stock

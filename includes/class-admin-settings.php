@@ -22,6 +22,7 @@ class WC_Scheduled_Discounts_Admin_Settings {
         add_action('wp_ajax_wc_sched_disc_search_products', array($this, 'ajax_search_products'));
         
         add_action('update_option_wc_sched_disc_settings', array($this, 'after_settings_saved'), 10, 2);
+        add_action('add_option_wc_sched_disc_settings', array($this, 'after_settings_saved'), 10, 2);
     }
     
     public function add_admin_menu() {
@@ -416,8 +417,11 @@ class WC_Scheduled_Discounts_Admin_Settings {
                 if ($product_id > 0 && isset($sanitized['products'][$product_id])) {
                     // Only store quantity if product exists in products array
                     // Allow 0 as a valid quantity (out of stock)
+                    // Check for both empty string and null, and allow 0
+                    $quantity = trim($quantity);
                     if ($quantity !== '' && $quantity !== null) {
                         $quantity_value = absint($quantity);
+                        // Store even if 0 (out of stock is valid)
                         $sanitized['product_quantities'][$product_id] = $quantity_value;
                     }
                 }
@@ -438,7 +442,14 @@ class WC_Scheduled_Discounts_Admin_Settings {
         }
         
         if (class_exists('WC_Scheduled_Discounts_Discount_Manager')) {
+            // Force immediate sync
             WC_Scheduled_Discounts_Discount_Manager::sync_campaign($new_value, $old_value);
+            
+            // Also trigger a manual check to ensure everything is updated
+            $manager = WC_Scheduled_Discounts_Discount_Manager::get_instance();
+            if (method_exists($manager, 'check_campaign_status')) {
+                $manager->check_campaign_status();
+            }
         }
     }
 }

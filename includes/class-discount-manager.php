@@ -570,13 +570,62 @@ class WC_Scheduled_Discounts_Discount_Manager {
             self::restore_product_price($product_id);
         }
         
+        // Update stock quantities immediately if specified (regardless of campaign status)
+        $manager = self::get_instance();
+        if (isset($new_settings['product_quantities']) && is_array($new_settings['product_quantities'])) {
+            foreach ($new_settings['product_quantities'] as $product_id => $quantity) {
+                $product_id = absint($product_id);
+                if ($product_id > 0 && isset($new_settings['products'][$product_id])) {
+                    // Get quantity - accept any numeric value (including 0)
+                    // Only skip if quantity is explicitly empty/null, not if it's 0
+                    if (!isset($quantity) || ($quantity === '' && $quantity !== '0' && $quantity !== 0)) {
+                        continue;
+                    }
+                    
+                    // Convert to integer - 0 is valid
+                    $quantity_value = is_numeric($quantity) ? absint($quantity) : 0;
+                    
+                    // Update stock immediately - always update if quantity is provided
+                    $result = $manager->update_product_stock_quantity($product_id, $quantity_value);
+                    
+                    // Force cache clear and reload - very aggressive
+                    wp_cache_delete($product_id, 'posts');
+                    wp_cache_delete('product-' . $product_id, 'products');
+                    wp_cache_delete('wc_product_meta_lookup_' . $product_id, 'product_meta');
+                    wc_delete_product_transients($product_id);
+                    delete_transient('wc_product_' . $product_id);
+                    delete_transient('wc_var_prices_' . $product_id);
+                    
+                    // Force WooCommerce to reload
+                    if (function_exists('wc_get_product')) {
+                        $test_product = wc_get_product($product_id);
+                        if ($test_product) {
+                            // Clear all caches again
+                            wc_delete_product_transients($product_id);
+                            if ($test_product->is_type('variable')) {
+                                $variations = $test_product->get_children();
+                                foreach ($variations as $var_id) {
+                                    wc_delete_product_transients($var_id);
+                                    wp_cache_delete($var_id, 'posts');
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Force WooCommerce cache version update
+                    if (class_exists('WC_Cache_Helper')) {
+                        WC_Cache_Helper::get_transient_version('product', true);
+                        WC_Cache_Helper::incr_cache_prefix('product_' . $product_id);
+                    }
+                }
+            }
+        }
+        
         // Check if campaign should be active now
         $is_now_active = WC_Scheduled_Discounts::is_campaign_active();
         
         if ($is_now_active && !empty($new_settings['products'])) {
             // Campaign is active - apply discounts to all products
-            $manager = self::get_instance();
-            
             // First, restore any products that were previously discounted but are no longer in the list
             // Then apply discounts to all current products
             foreach ($new_products as $product_id) {
@@ -593,9 +642,37 @@ class WC_Scheduled_Discounts_Discount_Manager {
             
             $new_settings['is_active'] = true;
         } else {
-            // Campaign is not active - restore all product prices
+            // Campaign is not active - restore all product prices (but keep stock quantities)
+            // Only restore prices for products that have discounts applied
             foreach ($new_products as $product_id) {
-                self::restore_product_price($product_id);
+                $applied_discount = get_post_meta($product_id, '_wc_sched_disc_applied', true);
+                if ($applied_discount) {
+                    // Only restore price, not stock (stock was updated separately above)
+                    $product = wc_get_product($product_id);
+                    if ($product) {
+                        $original_regular = get_post_meta($product_id, '_wc_sched_disc_original_regular', true);
+                        $original_sale = get_post_meta($product_id, '_wc_sched_disc_original_sale', true);
+                        
+                        if ($original_regular !== '' && $original_regular !== false) {
+                            $product->set_regular_price($original_regular);
+                            if (!empty($original_sale) && $original_sale !== '' && $original_sale !== false) {
+                                $product->set_sale_price($original_sale);
+                                $product->set_price($original_sale);
+                            } else {
+                                $product->set_sale_price('');
+                                $product->set_price($original_regular);
+                            }
+                            $product->save();
+                            
+                            // Only delete price-related meta, keep stock backup meta
+                            delete_post_meta($product_id, '_wc_sched_disc_original_regular');
+                            delete_post_meta($product_id, '_wc_sched_disc_original_sale');
+                            delete_post_meta($product_id, '_wc_sched_disc_applied');
+                            
+                            $manager->clear_product_caches($product_id);
+                        }
+                    }
+                }
             }
             
             $new_settings['is_active'] = false;
@@ -603,8 +680,165 @@ class WC_Scheduled_Discounts_Discount_Manager {
         
         update_option('wc_sched_disc_settings', $new_settings, false);
         
-        $manager = self::get_instance();
         $manager->clear_all_caches();
+    }
+    
+    public function update_product_stock_quantity($product_id, $quantity) {
+        $product_id = absint($product_id);
+        $quantity = absint($quantity);
+        
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            return false;
+        }
+        
+        // Handle variable products
+        if ($product->is_type('variable')) {
+            // For variable products, stock can be managed at parent or variation level
+            // First, check if parent manages stock
+            $parent_manages_stock = $product->managing_stock();
+            
+            // Backup parent stock settings if not already backed up
+            $parent_backup_stock = get_post_meta($product_id, '_wc_sched_disc_original_stock', true);
+            if ($parent_backup_stock === '' || $parent_backup_stock === false) {
+                $was_managing = $parent_manages_stock;
+                $current_stock = $parent_manages_stock ? $product->get_stock_quantity() : '';
+                update_post_meta($product_id, '_wc_sched_disc_original_manage_stock', $was_managing ? 'yes' : 'no');
+                update_post_meta($product_id, '_wc_sched_disc_original_stock', $current_stock !== null ? $current_stock : '');
+            }
+            
+            // Update parent product stock (for parent-level stock management)
+            // Use WooCommerce's official stock update function if available
+            if (function_exists('wc_update_product_stock')) {
+                wc_update_product_stock($product_id, $quantity, 'set');
+            } else {
+                update_post_meta($product_id, '_manage_stock', 'yes');
+                update_post_meta($product_id, '_stock', $quantity);
+                update_post_meta($product_id, '_stock_status', $quantity > 0 ? 'instock' : 'outofstock');
+            }
+            
+            $product->set_manage_stock(true);
+            $product->set_stock_quantity($quantity);
+            $product->set_stock_status($quantity > 0 ? 'instock' : 'outofstock');
+            $product->save();
+            
+            // Reload product to ensure changes took effect
+            $product = wc_get_product($product_id);
+            
+            // Double-check: update meta again after save to ensure it's persisted
+            update_post_meta($product_id, '_manage_stock', 'yes');
+            update_post_meta($product_id, '_stock', $quantity);
+            update_post_meta($product_id, '_stock_status', $quantity > 0 ? 'instock' : 'outofstock');
+            
+            // Use WooCommerce stock status function if available
+            if (function_exists('wc_update_product_stock_status')) {
+                wc_update_product_stock_status($product_id, $quantity > 0 ? 'instock' : 'outofstock');
+            }
+            
+            // Final save to ensure everything is committed
+            if ($product) {
+                $product->set_manage_stock(true);
+                $product->set_stock_quantity($quantity);
+                $product->save();
+            }
+            
+            // Also update all variations (for variation-level stock management)
+            $variations = $product->get_children();
+            $updated = false;
+            
+            foreach ($variations as $variation_id) {
+                $variation = wc_get_product($variation_id);
+                if ($variation) {
+                    // Backup original stock if not already backed up
+                    $backup_stock = get_post_meta($variation_id, '_wc_sched_disc_original_stock', true);
+                    if ($backup_stock === '' || $backup_stock === false) {
+                        $was_managing = $variation->managing_stock();
+                        $current_stock = $variation->managing_stock() ? $variation->get_stock_quantity() : '';
+                        update_post_meta($variation_id, '_wc_sched_disc_original_manage_stock', $was_managing ? 'yes' : 'no');
+                        update_post_meta($variation_id, '_wc_sched_disc_original_stock', $current_stock !== null ? $current_stock : '');
+                    }
+                    
+                    // Update stock - use WooCommerce's official function if available
+                    if (function_exists('wc_update_product_stock')) {
+                        wc_update_product_stock($variation_id, $quantity, 'set');
+                    } else {
+                        update_post_meta($variation_id, '_manage_stock', 'yes');
+                        update_post_meta($variation_id, '_stock', $quantity);
+                        update_post_meta($variation_id, '_stock_status', $quantity > 0 ? 'instock' : 'outofstock');
+                    }
+                    
+                    // Use WooCommerce methods
+                    $variation->set_manage_stock(true);
+                    $variation->set_stock_quantity($quantity);
+                    $variation->set_stock_status($quantity > 0 ? 'instock' : 'outofstock');
+                    $variation->save();
+                    
+                    // Double-check: update meta again after save to ensure it's persisted
+                    update_post_meta($variation_id, '_manage_stock', 'yes');
+                    update_post_meta($variation_id, '_stock', $quantity);
+                    update_post_meta($variation_id, '_stock_status', $quantity > 0 ? 'instock' : 'outofstock');
+                    
+                    // Use WooCommerce stock status function if available
+                    if (function_exists('wc_update_product_stock_status')) {
+                        wc_update_product_stock_status($variation_id, $quantity > 0 ? 'instock' : 'outofstock');
+                    }
+                    
+                    // Clear caches
+                    wc_delete_product_transients($variation_id);
+                    $updated = true;
+                }
+            }
+            
+            // Clear parent caches
+            wc_delete_product_transients($product_id);
+            WC_Cache_Helper::get_transient_version('product', true);
+            delete_transient('wc_var_prices_' . $product_id);
+            $this->clear_product_caches($product_id);
+            
+            return true;
+        }
+        
+        // Handle simple products
+        // Backup original stock if not already backed up
+        $backup_stock = get_post_meta($product_id, '_wc_sched_disc_original_stock', true);
+        if ($backup_stock === '' || $backup_stock === false) {
+            $was_managing = $product->managing_stock();
+            $current_stock = $product->managing_stock() ? $product->get_stock_quantity() : '';
+            update_post_meta($product_id, '_wc_sched_disc_original_manage_stock', $was_managing ? 'yes' : 'no');
+            update_post_meta($product_id, '_wc_sched_disc_original_stock', $current_stock !== null ? $current_stock : '');
+        }
+        
+        // Update stock - use WooCommerce's official function if available
+        if (function_exists('wc_update_product_stock')) {
+            wc_update_product_stock($product_id, $quantity, 'set');
+        } else {
+            update_post_meta($product_id, '_manage_stock', 'yes');
+            update_post_meta($product_id, '_stock', $quantity);
+            update_post_meta($product_id, '_stock_status', $quantity > 0 ? 'instock' : 'outofstock');
+        }
+        
+        // Use WooCommerce methods
+        $product->set_manage_stock(true);
+        $product->set_stock_quantity($quantity);
+        $product->set_stock_status($quantity > 0 ? 'instock' : 'outofstock');
+        $product->save();
+        
+        // Double-check: update meta again after save to ensure it's persisted
+        update_post_meta($product_id, '_manage_stock', 'yes');
+        update_post_meta($product_id, '_stock', $quantity);
+        update_post_meta($product_id, '_stock_status', $quantity > 0 ? 'instock' : 'outofstock');
+        
+        // Use WooCommerce stock status function if available
+        if (function_exists('wc_update_product_stock_status')) {
+            wc_update_product_stock_status($product_id, $quantity > 0 ? 'instock' : 'outofstock');
+        }
+        
+        // Clear caches
+        wc_delete_product_transients($product_id);
+        delete_transient('wc_product_' . $product_id);
+        $this->clear_product_caches($product_id);
+        
+        return true;
     }
     
     private function clear_product_caches($product_id) {
