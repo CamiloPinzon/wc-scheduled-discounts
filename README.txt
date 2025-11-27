@@ -4,7 +4,7 @@ Tags: woocommerce, discounts, sales, badges, scheduled
 Requires at least: 5.8
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.3.2
+Stable tag: 1.3.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,18 @@ Sí, el plugin es compatible con productos simples y variables.
 Los precios originales se restauran automáticamente.
 
 == Changelog ==
+
+= 1.3.4 =
+* Corrección completa y pruebas: Mejoras finales en la gestión de stock
+* Ahora se actualizan los metadatos de stock directamente tanto al aplicar como al restaurar
+* Mejora en la consistencia: todos los cambios de stock se aplican mediante múltiples métodos
+* Corrección en la restauración de stock para productos que no gestionaban inventario previamente
+
+= 1.3.3 =
+* Corrección crítica: Mejora en la actualización de cantidades de stock
+* Ahora se actualizan los metadatos de stock directamente antes y después de guardar
+* Se limpian las cachés de productos para garantizar que los cambios sean visibles inmediatamente
+* Se recarga el producto después de actualizar el stock para asegurar consistencia
 
 = 1.3.2 =
 * Corrección crítica: Actualización de cantidades de stock ahora funciona correctamente

@@ -140,7 +140,7 @@ class WC_Scheduled_Discounts_Discount_Manager {
         if ($product->is_type('variable')) {
             // Backup parent product stock settings if quantity is specified
             $settings = WC_Scheduled_Discounts::get_settings();
-            if (isset($settings['product_quantities'][$product_id]) && $settings['product_quantities'][$product_id] > 0) {
+            if (isset($settings['product_quantities'][$product_id]) && $settings['product_quantities'][$product_id] !== '') {
                 $backup_manage_stock = get_post_meta($product_id, '_wc_sched_disc_original_manage_stock', true);
                 if (empty($backup_manage_stock)) {
                     $was_managing_stock = $product->managing_stock();
@@ -225,29 +225,32 @@ class WC_Scheduled_Discounts_Discount_Manager {
         $product->set_sale_price($new_sale_price);
         $product->set_price($new_sale_price);
         
+        // Save product with discount first
+        $product->save();
+        
         // Update stock quantity if specified in settings
         $settings = WC_Scheduled_Discounts::get_settings();
         if (isset($settings['product_quantities'][$product_id]) && $settings['product_quantities'][$product_id] !== '') {
             $new_quantity = absint($settings['product_quantities'][$product_id]);
             
-            // Enable stock management
-            $product->set_manage_stock(true);
-            $product->set_stock_quantity($new_quantity);
-            
-            // Set stock status to instock if quantity > 0
-            if ($new_quantity > 0) {
-                $product->set_stock_status('instock');
-            } else {
-                $product->set_stock_status('outofstock');
-            }
-            
-            // Also update meta directly to ensure it's saved
+            // Update stock meta directly (this is the most reliable way)
             update_post_meta($product_id, '_manage_stock', 'yes');
             update_post_meta($product_id, '_stock', $new_quantity);
-            wc_update_product_stock_status($product_id, $new_quantity > 0 ? 'instock' : 'outofstock');
+            update_post_meta($product_id, '_stock_status', $new_quantity > 0 ? 'instock' : 'outofstock');
+            
+            // Also use WooCommerce methods to ensure consistency
+            $product = wc_get_product($product_id);
+            if ($product) {
+                $product->set_manage_stock(true);
+                $product->set_stock_quantity($new_quantity);
+                $product->set_stock_status($new_quantity > 0 ? 'instock' : 'outofstock');
+                $product->save();
+                
+                // Clear product caches to ensure changes are visible immediately
+                wc_delete_product_transients($product_id);
+                delete_transient('wc_product_' . $product_id);
+            }
         }
-        
-        $product->save();
         
         update_post_meta($product_id, '_wc_sched_disc_applied', $discount);
         
@@ -308,30 +311,41 @@ class WC_Scheduled_Discounts_Discount_Manager {
         $variation->set_sale_price($new_sale_price);
         $variation->set_price($new_sale_price);
         
+        // Save variation with discount first
+        $variation->save();
+        
         // Update stock quantity if specified in settings (for parent product)
         $settings = WC_Scheduled_Discounts::get_settings();
         $parent_id = $variation->get_parent_id();
         if ($parent_id && isset($settings['product_quantities'][$parent_id]) && $settings['product_quantities'][$parent_id] !== '') {
             $new_quantity = absint($settings['product_quantities'][$parent_id]);
             
-            // Enable stock management
-            $variation->set_manage_stock(true);
-            $variation->set_stock_quantity($new_quantity);
-            
-            // Set stock status to instock if quantity > 0
-            if ($new_quantity > 0) {
-                $variation->set_stock_status('instock');
-            } else {
-                $variation->set_stock_status('outofstock');
-            }
-            
-            // Also update meta directly to ensure it's saved
+            // Update stock meta directly BEFORE reloading (this is the most reliable way)
             update_post_meta($variation_id, '_manage_stock', 'yes');
             update_post_meta($variation_id, '_stock', $new_quantity);
-            wc_update_product_stock_status($variation_id, $new_quantity > 0 ? 'instock' : 'outofstock');
+            update_post_meta($variation_id, '_stock_status', $new_quantity > 0 ? 'instock' : 'outofstock');
+            
+            // Force WooCommerce to recognize the stock change by using product object
+            $variation = wc_get_product($variation_id);
+            if ($variation) {
+                $variation->set_manage_stock(true);
+                $variation->set_stock_quantity($new_quantity);
+                $variation->set_stock_status($new_quantity > 0 ? 'instock' : 'outofstock');
+                
+                // Save variation
+                $variation->save();
+                
+                // Clear all related caches
+                wc_delete_product_transients($variation_id);
+                wc_delete_product_transients($parent_id);
+                delete_transient('wc_product_' . $variation_id);
+                delete_transient('wc_var_prices_' . $parent_id);
+                
+                // Also update parent product caches
+                WC_Cache_Helper::get_transient_version('product', true);
+                $this->clear_product_caches($parent_id);
+            }
         }
-        
-        $variation->save();
         
         update_post_meta($variation_id, '_wc_sched_disc_applied', $discount);
         
@@ -414,14 +428,19 @@ class WC_Scheduled_Discounts_Discount_Manager {
                 if ($original_stock !== '' && $original_stock !== false && $original_stock !== null) {
                     $product->set_stock_quantity($original_stock);
                     // Update stock status based on quantity
-                    if ($original_stock > 0) {
-                        $product->set_stock_status('instock');
-                    } else {
-                        $product->set_stock_status('outofstock');
-                    }
+                    $stock_status = ($original_stock > 0) ? 'instock' : 'outofstock';
+                    $product->set_stock_status($stock_status);
+                    
+                    // Update meta directly for consistency
+                    update_post_meta($product_id, '_manage_stock', 'yes');
+                    update_post_meta($product_id, '_stock', $original_stock);
+                    update_post_meta($product_id, '_stock_status', $stock_status);
                 }
             } else {
                 $product->set_manage_stock(false);
+                // Update meta directly
+                update_post_meta($product_id, '_manage_stock', 'no');
+                delete_post_meta($product_id, '_stock');
             }
             
             $product->save();
@@ -469,14 +488,19 @@ class WC_Scheduled_Discounts_Discount_Manager {
                 if ($original_stock !== '' && $original_stock !== false && $original_stock !== null) {
                     $variation->set_stock_quantity($original_stock);
                     // Update stock status based on quantity
-                    if ($original_stock > 0) {
-                        $variation->set_stock_status('instock');
-                    } else {
-                        $variation->set_stock_status('outofstock');
-                    }
+                    $stock_status = ($original_stock > 0) ? 'instock' : 'outofstock';
+                    $variation->set_stock_status($stock_status);
+                    
+                    // Update meta directly for consistency
+                    update_post_meta($variation_id, '_manage_stock', 'yes');
+                    update_post_meta($variation_id, '_stock', $original_stock);
+                    update_post_meta($variation_id, '_stock_status', $stock_status);
                 }
             } else {
                 $variation->set_manage_stock(false);
+                // Update meta directly
+                update_post_meta($variation_id, '_manage_stock', 'no');
+                delete_post_meta($variation_id, '_stock');
             }
             
             $variation->save();
