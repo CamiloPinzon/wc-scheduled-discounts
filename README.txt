@@ -50,7 +50,13 @@ Sí, el plugin es compatible con productos simples y variables.
 
 Los precios originales se restauran automáticamente.
 
-== Changelog ==
+= 1.4.3 =
+* Mejora: Ajustes finales para suscripciones con renovación automática
+* Descuentos siempre aplican en la primera compra (suscripciones con o sin renovación)
+* Los pedidos de renovación se recalculan automáticamente al precio regular
+* Compatibilidad con variaciones de suscripción y productos variables
+* Detección mejorada de productos y pedidos de renovación usando funciones nativas de WooCommerce Subscriptions
+* Mensaje bilingüe en la página del producto recordando que el descuento solo aplica en la primera compra
 
 = 1.4.2 =
 * Mejora crítica: Limpieza exhaustiva de caché cuando se activan/desactivan descuentos

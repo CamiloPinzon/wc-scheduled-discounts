@@ -142,6 +142,10 @@ class WC_Scheduled_Discounts {
             return false;
         }
         
+        if (function_exists('wcs_is_subscription_product')) {
+            return wcs_is_subscription_product($product);
+        }
+        
         // Check if product is subscription type
         $subscription_types = array('subscription', 'variable-subscription', 'subscription_variation');
         return in_array($product->get_type(), $subscription_types, true);
@@ -169,13 +173,13 @@ class WC_Scheduled_Discounts {
         }
         
         // Check if cart contains a renewal order
-        if (function_exists('wcs_cart_contains_renewal')) {
-            return wcs_cart_contains_renewal();
+        if (function_exists('wcs_cart_contains_renewal') && wcs_cart_contains_renewal()) {
+            return true;
         }
         
         // Check if cart contains a resubscribe
-        if (function_exists('wcs_cart_contains_resubscribe')) {
-            return wcs_cart_contains_resubscribe();
+        if (function_exists('wcs_cart_contains_resubscribe') && wcs_cart_contains_resubscribe()) {
+            return true;
         }
         
         return false;
@@ -200,12 +204,16 @@ class WC_Scheduled_Discounts {
             return false;
         }
         
-        // Check if order is a renewal
-        if (function_exists('wcs_order_contains_renewal')) {
-            return wcs_order_contains_renewal($order);
+        // Use WooCommerce Subscriptions helper if available
+        if (function_exists('wcs_is_subscription_renewal_order')) {
+            return wcs_is_subscription_renewal_order($order);
+        }
+        
+        if (function_exists('wcs_order_contains_renewal') && wcs_order_contains_renewal($order)) {
+            return true;
         }
         
         // Fallback: check order meta
-        return $order->get_meta('_subscription_renewal', true) || $order->get_meta('_original_order_id', true);
+        return (bool) $order->get_meta('_subscription_renewal', true) || (bool) $order->get_meta('_original_order_id', true);
     }
 }

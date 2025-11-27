@@ -28,7 +28,7 @@ class WC_Scheduled_Discounts_Discount_Manager {
             add_action('woocommerce_before_calculate_totals', array($this, 'remove_discount_from_renewals'), 10, 1);
             
             // Ensure renewal orders use regular price, not sale price
-            add_action('wcs_new_order_created', array($this, 'ensure_renewal_uses_regular_price'), 10, 3);
+            add_action('wcs_new_order_created', array($this, 'handle_new_subscription_order'), 10, 3);
             add_action('woocommerce_before_order_object_save', array($this, 'ensure_renewal_order_regular_price'), 10, 1);
         }
         
@@ -1119,73 +1119,32 @@ class WC_Scheduled_Discounts_Discount_Manager {
     }
     
     /**
-     * Ensure renewal orders use regular price, not sale price
-     * This runs when a new subscription renewal order is created
-     * 
-     * @param WC_Order $renewal_order Renewal order
-     * @param WC_Order $subscription Parent subscription order
-     * @param int $order_type Order type (1 = renewal, 2 = resubscribe, 3 = switch)
+     * Handle new subscription orders (renewals) created by WooCommerce Subscriptions
+     *
+     * @param int|WC_Order $order Renewal order ID or object
+     * @param WC_Subscription $subscription Parent subscription
+     * @param string|int $order_type Order type identifier
      */
-    public function ensure_renewal_uses_regular_price($renewal_order, $subscription, $order_type) {
-        // Only process renewal orders (type 1)
-        if ($order_type !== 1) {
-            return;
-        }
-        
+    public function handle_new_subscription_order($order, $subscription, $order_type) {
         if (!WC_Scheduled_Discounts::is_subscriptions_active()) {
             return;
         }
         
-        $settings = WC_Scheduled_Discounts::get_settings();
-        
-        foreach ($renewal_order->get_items() as $item_id => $item) {
-            $product_id = $item->get_product_id();
-            $variation_id = $item->get_variation_id();
-            
-            // Use variation ID if available, otherwise product ID
-            $actual_product_id = $variation_id > 0 ? $variation_id : $product_id;
-            
-            // Check if this product has a discount from our plugin
-            if (!isset($settings['products'][$actual_product_id]) && !isset($settings['products'][$product_id])) {
-                continue;
-            }
-            
-            // Get the product
-            $product = wc_get_product($actual_product_id);
-            if (!$product) {
-                continue;
-            }
-            
-            // Get original regular price
-            $original_regular = get_post_meta($actual_product_id, '_wc_sched_disc_original_regular', true);
-            
-            if ($original_regular !== '' && $original_regular !== false && is_numeric($original_regular)) {
-                // Calculate line total with regular price (no discount)
-                $qty = $item->get_quantity();
-                $line_total = floatval($original_regular) * $qty;
-                $line_subtotal = floatval($original_regular) * $qty;
-                
-                // Update order item prices
-                $item->set_subtotal($line_subtotal);
-                $item->set_total($line_total);
-                $item->save();
-            } else {
-                // Fallback: use current regular price
-                $regular_price = $product->get_regular_price();
-                if ($regular_price) {
-                    $qty = $item->get_quantity();
-                    $line_total = floatval($regular_price) * $qty;
-                    $line_subtotal = floatval($regular_price) * $qty;
-                    
-                    $item->set_subtotal($line_subtotal);
-                    $item->set_total($line_total);
-                    $item->save();
-                }
-            }
+        // Only process renewal orders
+        $order_type_value = is_string($order_type) ? strtolower($order_type) : $order_type;
+        if ($order_type_value !== 'renewal' && $order_type_value !== 1) {
+            return;
         }
         
-        // Recalculate order totals
-        $renewal_order->calculate_totals();
+        if (!is_a($order, 'WC_Order')) {
+            $order = wc_get_order($order);
+        }
+        
+        if (!$order) {
+            return;
+        }
+        
+        $this->apply_regular_price_to_order($order);
     }
     
     /**
@@ -1195,49 +1154,88 @@ class WC_Scheduled_Discounts_Discount_Manager {
      * @param WC_Order $order Order object
      */
     public function ensure_renewal_order_regular_price($order) {
-        if (!WC_Scheduled_Discounts::is_renewal_order($order)) {
-            return;
-        }
-        
         if (!WC_Scheduled_Discounts::is_subscriptions_active()) {
             return;
         }
         
-        // Prevent infinite loops
-        if (did_action('woocommerce_before_order_object_save') > 1) {
+        if (!WC_Scheduled_Discounts::is_renewal_order($order)) {
             return;
         }
         
+        static $processing = false;
+        if ($processing) {
+            return;
+        }
+        
+        if (!is_a($order, 'WC_Order')) {
+            $order = wc_get_order($order);
+        }
+        
+        if (!$order) {
+            return;
+        }
+        
+        $processing = true;
+        $this->apply_regular_price_to_order($order, true);
+        $processing = false;
+    }
+    
+    /**
+     * Apply regular price to renewal order items
+     *
+     * @param WC_Order $order
+     * @param bool $only_if_different Only update totals if they differ
+     */
+    private function apply_regular_price_to_order($order, $only_if_different = false) {
         $settings = WC_Scheduled_Discounts::get_settings();
+        if (empty($settings['products']) || !is_array($settings['products'])) {
+            return;
+        }
+        
+        $needs_save = false;
         
         foreach ($order->get_items() as $item_id => $item) {
             $product_id = $item->get_product_id();
             $variation_id = $item->get_variation_id();
             
-            // Use variation ID if available, otherwise product ID
             $actual_product_id = $variation_id > 0 ? $variation_id : $product_id;
             
-            // Check if this product has a discount from our plugin
-            if (!isset($settings['products'][$actual_product_id]) && !isset($settings['products'][$product_id])) {
+            $has_discount = isset($settings['products'][$actual_product_id]) || isset($settings['products'][$product_id]);
+            if (!$has_discount) {
                 continue;
             }
             
-            // Get original regular price
-            $original_regular = get_post_meta($actual_product_id, '_wc_sched_disc_original_regular', true);
+            $discount_product_id = isset($settings['products'][$actual_product_id]) ? $actual_product_id : $product_id;
             
-            if ($original_regular !== '' && $original_regular !== false && is_numeric($original_regular)) {
-                // Calculate line total with regular price (no discount)
-                $qty = $item->get_quantity();
-                $line_total = floatval($original_regular) * $qty;
-                $line_subtotal = floatval($original_regular) * $qty;
-                
-                // Only update if current total is different (to avoid unnecessary saves)
-                if ($item->get_total() != $line_total) {
-                    $item->set_subtotal($line_subtotal);
-                    $item->set_total($line_total);
-                    $item->save();
+            $original_regular = get_post_meta($discount_product_id, '_wc_sched_disc_original_regular', true);
+            if ($original_regular === '' || $original_regular === false || !is_numeric($original_regular)) {
+                $product = wc_get_product($discount_product_id);
+                if (!$product) {
+                    continue;
                 }
+                $original_regular = $product->get_regular_price();
             }
+            
+            if ($original_regular === '' || $original_regular === false || !is_numeric($original_regular)) {
+                continue;
+            }
+            
+            $qty = $item->get_quantity();
+            $line_total = floatval($original_regular) * $qty;
+            $line_subtotal = $line_total;
+            
+            if ($only_if_different && floatval($item->get_total()) === $line_total) {
+                continue;
+            }
+            
+            $item->set_subtotal($line_subtotal);
+            $item->set_total($line_total);
+            $item->save();
+            $needs_save = true;
+        }
+        
+        if ($needs_save) {
+            $order->calculate_totals(false);
         }
     }
 }
